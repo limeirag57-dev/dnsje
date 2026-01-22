@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Snake Mobile Avançado</title>
+  <style>
+    body {
+      margin: 0;
+      background: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container { text-align: center; }
+
+    canvas {
+      background: #000;
+      border: 2px solid #0f0;
+      touch-action: none;
+    }
+
+    .score { margin: 8px 0; }
+
+    button, select, label {
+      margin: 4px;
+      padding: 8px;
+      font-size: 14px;
+      border-radius: 6px;
+      border: none;
+    }
+
+    button { background: #0f0; color: #000; }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(3, 55px);
+      gap: 4px;
+      justify-content: center;
+      margin-top: 6px;
+    }
+
+    .controls button {
+      background: #333;
+      color: #0f0;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h3>🐍 Snake</h3>
+
+  <div class="score">
+    Score: <span id="score">0</span> |
+    Recorde: <span id="record">0</span>
+  </div>
+
+  <canvas id="game" width="300" height="300"></canvas><br>
+
+  <button onclick="restartGame()">🔄 Reiniciar</button><br>
+
+  <label>
+    <input type="checkbox" id="speedToggle" checked>
+    Velocidade Progressiva
+  </label><br>
+
+  <select id="skinSelect">
+    <option value="green">Verde</option>
+    <option value="blue">Azul</option>
+    <option value="pink">Rosa</option>
+  </select><br>
+
+  <div class="controls">
+    <div></div><button onclick="setDirection('UP')">⬆️</button><div></div>
+    <button onclick="setDirection('LEFT')">⬅️</button><div></div><button onclick="setDirection('RIGHT')">➡️</button>
+    <div></div><button onclick="setDirection('DOWN')">⬇️</button><div></div>
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const scoreEl = document.getElementById('score');
+  const recordEl = document.getElementById('record');
+
+  const eatSound = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=');
+  const gameOverSound = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=');
+
+  const box = 15;
+  const max = canvas.width / box;
+
+  let snake, direction, food, score, game, speed;
+
+  let record = localStorage.getItem('snakeRecord') || 0;
+  recordEl.textContent = record;
+
+  function init() {
+    snake = [{ x: 10 * box, y: 10 * box }];
+    direction = 'RIGHT';
+    score = 0;
+    speed = 140;
+    scoreEl.textContent = score;
+    food = randomFood();
+
+    clearInterval(game);
+    game = setInterval(drawGame, speed);
+  }
+
+  function randomFood() {
+    return { x: Math.floor(Math.random() * max) * box, y: Math.floor(Math.random() * max) * box };
+  }
+
+  function setDirection(dir) {
+    if (dir === 'LEFT' && direction !== 'RIGHT') direction = dir;
+    if (dir === 'RIGHT' && direction !== 'LEFT') direction = dir;
+    if (dir === 'UP' && direction !== 'DOWN') direction = dir;
+    if (dir === 'DOWN' && direction !== 'UP') direction = dir;
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key.includes('Arrow')) setDirection(e.key.replace('Arrow','').toUpperCase());
+  });
+
+  function drawGame() {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const skin = document.getElementById('skinSelect').value;
+    const headColor = skin === 'green' ? '#0f0' : skin === 'blue' ? '#00f' : '#ff69b4';
+
+    snake.forEach((p, i) => {
+      ctx.fillStyle = i === 0 ? headColor : '#7CFC00';
+      ctx.fillRect(p.x, p.y, box, box);
+    });
+
+    ctx.fillStyle = 'red';
+    ctx.fillRect(food.x, food.y, box, box);
+
+    let headX = snake[0].x;
+    let headY = snake[0].y;
+
+    if (direction === 'LEFT') headX -= box;
+    if (direction === 'RIGHT') headX += box;
+    if (direction === 'UP') headY -= box;
+    if (direction === 'DOWN') headY += box;
+
+    if (headX === food.x && headY === food.y) {
+      score++;
+      scoreEl.textContent = score;
+      eatSound.play();
+
+      if (document.getElementById('speedToggle').checked && speed > 60) {
+        speed -= 5;
+        clearInterval(game);
+        game = setInterval(drawGame, speed);
+      }
+
+      food = randomFood();
+    } else snake.pop();
+
+    const newHead = { x: headX, y: headY };
+
+    if (headX < 0 || headX >= canvas.width || headY < 0 || headY >= canvas.height || collision(newHead)) {
+      clearInterval(game);
+      gameOverSound.play();
+
+      if (score > record) {
+        record = score;
+        localStorage.setItem('snakeRecord', record);
+        recordEl.textContent = record;
+      }
+      alert('Game Over!');
+    }
+
+    snake.unshift(newHead);
+  }
+
+  function collision(head) {
+    return snake.some(p => p.x === head.x && p.y === head.y);
+  }
+
+  function restartGame() { init(); }
+
+  init();
+</script>
+</body>
+</html>
